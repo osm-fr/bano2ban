@@ -1,7 +1,7 @@
 # bano2ban
 Script de versement de données vers l'API de gestion de la BAN
 
-Seules les données non ODbL non traitées pour respecter les contraintes de la BAN.
+Seules les données non ODbL sont traitées pour respecter les contraintes de la BAN.
 
 ## Premier test: opendata Montpellier
 
