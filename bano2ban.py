@@ -70,15 +70,46 @@ for group in groups:
                         print("    "+h['number']+h['ordinal']+" > "+housenumber[0])
                         payload = {'ordinal': od_ordinal, 'version': h['version']+1}
                         patch = requests.patch(api+'/housenumber/'+h['id'], headers={'Authorization':'Bearer '+auth_token}, json=payload)
-                        print(patch.text)
-                        ban_num = h
+                        print('    mise à jour housenumber/ordinal', patch.status_code)
+                        ban_num = json.loads(patch.text)
                         break
             if ban_num is None: # numéro non trouvé
                 print("    N° " + housenumber[0] + " non trouvé")
                 # on ajoute le housenumber manquant
                 payload = {'number': od_number, 'ordinal': od_ordinal, 'parent': ban_group['id'], 'attributes': {'created_from': 'Opendata Montpellier'} }
                 post = requests.post(api+'/housenumber', headers={'Authorization':'Bearer '+auth_token}, json=payload)
-                print(post.text)
+                ban_num = json.loads(post.text)
+                print('    ajout housenumber > '+ban_num['id'])
+                payload = {
+                    'housenumber': ban_num['id'],
+                    'attributes': {'comment': 'Opendata Montpellier'},
+                    'kind':'entrance',
+                    'positioning':'gps',
+                    'center':{'coordinates': [housenumber[1],housenumber[2]]}
+                }
+                post = requests.post(api+'/position', headers={'Authorization':'Bearer '+auth_token}, json=payload)
+                ban_pos = json.loads(post.text)
+                print('      ajout position N° %s > %s' % (housenumber[0], ban_pos['id']))
+            else:
+                # maintenant les positions...
+                get = requests.get(api+'/position?housenumber='+ban_num['id'], headers={'Authorization':'Bearer '+auth_token})
+                ban_positions = json.loads(get.text)
+                ban_pos = None
+                for pos in ban_positions['collection']:
+                    if pos['center']['coordinates'][0] == housenumber[1] and pos['center']['coordinates'][1] == housenumber[2]:
+                        ban_pos = pos
+                        break
+                if ban_pos is None: # position pas trouvée, on l'ajoute
+                    payload = {
+                        'housenumber': ban_num['id'],
+                        'attributes': {'comment': 'Opendata Montpellier'},
+                        'kind':'entrance',
+                        'positioning':'gps',
+                        'center':{'coordinates': [housenumber[1],housenumber[2]]}
+                    }
+                    post = requests.post(api+'/position', headers={'Authorization':'Bearer '+auth_token}, json=payload)
+                    ban_pos = json.loads(post.text)
+                    print('      ajout position N° %s > %s' % (housenumber[0], ban_pos['id']))
 
     else:
         print('Fantoir %s non trouvé' % (group[0], ))
