@@ -1,5 +1,6 @@
 import requests
 import psycopg2
+import psycopg2.extras
 import json
 import re
 import sys
@@ -26,7 +27,7 @@ def getAuthToken():
 
 # on récupère le token d'authentification pour les appels suivants
 auth_token = getAuthToken()
-conn = psycopg2.connect("dbname=cquest user=cquest")
+conn = psycopg2.connect("dbname=cquest user=cquest", cursor_factory=psycopg2.extras.DictCursor)
 cur = conn.cursor()
 cur2 = conn.cursor()
 
@@ -35,7 +36,7 @@ cur.execute("SELECT fantoir, voie_cadastre FROM cumul_adresses WHERE insee_com=%
 groups = cur.fetchall()
 print(len(groups),' groupes dans BANO')
 for group in groups:
-    get = requests.get(api+'/group/fantoir:'+group[0][:9], headers={'Authorization':'Bearer '+auth_token})
+    get = requests.get(api+'/group/fantoir:'+group['fantoir'][:9], headers={'Authorization':'Bearer '+auth_token})
     if get.status_code == 200: # on a trouvé la voie
         ban_group = json.loads(get.text)
         name = re.sub('  ',' ',group[1]) # nettoyage des espaces multiples...
