@@ -2,10 +2,15 @@ import requests
 import psycopg2
 import json
 import re
+import sys
 import secret # contient les identifiants de connexion à l'API
 
 api = 'https://api-ban.ign.fr'
 auth_token = None
+if len(sys.argv)>1:
+    insee = sys.argv[1]
+else:
+    insee = '34172' # Montpellier
 
 def getAuthToken():
     payload={
@@ -26,7 +31,7 @@ cur = conn.cursor()
 cur2 = conn.cursor()
 
 # on vérifie la liste des voies
-cur.execute("SELECT fantoir, voie_cadastre FROM cumul_adresses WHERE source = 'OD-MONTPELLIER' group by 1,2;")
+cur.execute("SELECT fantoir, voie_cadastre FROM cumul_adresses WHERE insee_com=%s AND source ~ '^OD-' group by 1,2;" , (insee,))
 groups = cur.fetchall()
 print(len(groups),' groupes dans BANO')
 for group in groups:
@@ -42,7 +47,7 @@ for group in groups:
                 print('  Mise à jour', patch.status_code)
 
         # contrôle des housenumbers de la voie
-        cur2.execute("SELECT numero, st_x(geometrie) as lon, st_y(geometrie) as lat FROM cumul_adresses WHERE source = 'OD-MONTPELLIER' and fantoir=%s order by 1;", (group[0],))
+        cur2.execute("SELECT numero, st_x(geometrie) as lon, st_y(geometrie) as lat, source FROM cumul_adresses WHERE insee_com=%s AND source ~ '^OD-' and fantoir=%s order by 1;", (insee, group[0]))
         housenumbers = cur2.fetchall()
 
         # récupération depuis la BAN
