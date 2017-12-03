@@ -23,7 +23,7 @@ def getAuthToken():
     (status,token) = call_api('POST','/token/', payload)
     return token['access_token']
 
-def call_api(method, endpoint, payload=None):
+def call_api(method, endpoint, payload=None, retry=False):
     # header si on est authentifié
     if auth_token is not None:
         headers={'Authorization':'Bearer '+auth_token}
@@ -37,6 +37,13 @@ def call_api(method, endpoint, payload=None):
         result = requests.patch(api+endpoint, headers=headers, json=payload)
     elif method == 'DELETE':
         result = requests.delete(api+endpoint, headers=headers, json=payload)
+    if result.status_code == 401 and not retry: # token expiré ?
+        getAuthToken()
+        print("TOKEN renouvelé")
+        return call_api(method, endpoint, payload, True)
+    elif result.status_code != 200:
+        print(result.status_code, result.text)
+        exit
     return(result.status_code, json.loads(result.text))
 
 # on récupère le token d'authentification pour les appels suivants
