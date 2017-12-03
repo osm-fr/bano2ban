@@ -37,8 +37,6 @@ def call_api(method, endpoint, payload=None):
         result = requests.patch(api+endpoint, headers=headers, json=payload)
     elif method == 'DELETE':
         result = requests.delete(api+endpoint, headers=headers, json=payload)
-    if (result.status_code != 200):
-        print(result.text)
     return(result.status_code, json.loads(result.text))
 
 # on récupère le token d'authentification pour les appels suivants
@@ -68,6 +66,31 @@ for group in groups:
 
         # récupération depuis la BAN
         (status,ban_housenumbers) = call_api('GET','/housenumber?limit=1000&group=fantoir:'+group['fantoir'])
+
+        # vérification des numéros dans BAN et absents dans source
+        for h in ban_housenumbers['collection']:
+            num = None
+            if h['number'] is None:
+                continue
+            if h['ordinal'] is None:
+                h['ordinal'] = ''
+            for housenumber in housenumbers:
+                od_number = re.sub('[^0-9]', '', housenumber['numero'])
+                od_ordinal = re.sub(od_number, '', housenumber['numero']).strip().lower()
+                if h['number'] == od_number and h['ordinal'].upper() == od_ordinal.upper():
+                    num = housenumber
+                    break
+            if num is None and h['ordinal'] != '':
+                for housenumber in housenumbers:
+                    od_number = re.sub('[^0-9]', '', housenumber['numero'])
+                    od_ordinal = re.sub(od_number, '', housenumber['numero']).strip().lower()
+                    if h['number'] == od_number and od_ordinal !='' and h['ordinal'][0].upper() == od_ordinal[0].upper():
+                        num = housenumber
+                        break
+            if num is None:
+                print('    N°%s%s (BAN) absent de la source' % (h['number'],h['ordinal']))
+                if 'comment' not in h:
+                    status = call_api('PATCH', '/housenumber/'+h['id'], {'comment': 'absent de Opendata Montpellier', 'version': h['version']+1})
 
         for housenumber in housenumbers:
             od_number = re.sub('[^0-9]', '', housenumber['numero'])
